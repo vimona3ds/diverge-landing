@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Brain Synapse Visualization</title>
+		<style>
+			body { 
+                margin: 0; 
+                overflow: hidden;
+                background-color: white;
+            }
+            #controls {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                z-index: 100;
+            }
+            button {
+                padding: 8px 16px;
+                background: rgba(255, 255, 255, 0.7);
+                border: 1px solid #333;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            button:hover {
+                background: rgba(255, 255, 255, 0.9);
+            }
+		</style>
+	</head>
+	<body>
+        <div id="controls">
+            <button id="toggleButton">Pause</button>
+        </div>
+        <script type="importmap">
+            {
+              "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/"
+              }
+            }
+          </script>
+		<script type="module" src="main.js"></script>
+	</body>
+</html>

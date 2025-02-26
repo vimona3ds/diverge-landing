@@ -1,18 +1,410 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rotating Wireframe Cube</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>DIVERGE</title>
+    <link rel="preload" href="assets/cursor.svg" as="image" type="image/svg+xml">
+    <style>
+        @font-face {
+            font-family: 'ProggyClean';
+            src: url('assets/ProggyClean.ttf') format('truetype');
+        }
+
+        :root {
+            --primary-color: #333;
+            --background-color: #f4ecd8;
+        }
+
+        * {
+            font-family: 'ProggyClean', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-size: 24px;
+            box-sizing: border-box;
+            cursor: url('assets/cursor.svg') 12 12, crosshair !important;
+            
+            /* Disable font smoothing */
+            /* -webkit-font-smoothing: none;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeSpeed; */
+        }
+
+        html, body {
+            background-color: #000;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Ensure cursor stays consistent for all elements and states */
+        *:hover, *:active, *:focus {
+            cursor: url('assets/cursor.svg') 12 12, crosshair !important;
+        }
+
+        a, button, input, select, textarea, [role="button"] {
+            cursor: url('assets/cursor.svg') 12 12, crosshair !important;
+        }
+
+        main, .container, .rectangle, canvas {
+            /* cursor property is already set globally */
+        }
+
+        img {
+            image-rendering: optimizeSpeed;
+            /* STOP SMOOTHING, GIVE ME SPEED  */
+            image-rendering: -moz-crisp-edges;
+            /* Firefox                        */
+            image-rendering: -o-crisp-edges;
+            /* Opera                          */
+            image-rendering: -webkit-optimize-contrast;
+            /* Chrome (and eventually Safari) */
+            image-rendering: pixelated;
+            /* Universal support since 2021   */
+            image-rendering: optimize-contrast;
+            /* CSS3 Proposed                  */
+            -ms-interpolation-mode: nearest-neighbor;
+            /* IE8+                           */
+        }
+
+        /* Styling for rectangle canvases */
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            /* Size will be set in JavaScript */
+        }
+
+        main {
+            background-color: var(--background-color);
+            width: 100vmin;
+            aspect-ratio: 1/1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .diverge-container {
+            width: 80vmin;
+            aspect-ratio: 1/1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .header {
+            padding: 4px;
+            flex: 0 0 auto;
+            z-index: 10;
+        }
+
+        .header::after {
+            content: '';
+            display: inline-block;
+            width: 0.2ch;
+            height: 1em;
+            background-color: var(--primary-color);
+            animation: blink 0.8s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            border: 2px solid var(--primary-color);
+            padding: 2px;
+            display: flex;
+            flex-direction: row;
+            gap: 2px;
+            align-items: flex-end;
+            position: relative;
+        }
+
+        /* Info display for rectangle information */
+        .info-display {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            padding: 4px;
+            z-index: 20;
+            display: none;
+            line-height: 1.2;
+            white-space: pre-line;
+        }
+
+        .rectangle {
+            border: 2px solid var(--primary-color);
+            transition: all 0.1s cubic-bezier(0,1,1,1);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Height and width will be set by JavaScript */
+            /* Remove fixed width and height */
+        }
+
+        @keyframes blink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
 </head>
+
 <body>
-    <div class="svg-container">
-        <img src="assets/d.svg" class="svg-letter d-letter">
-        <span class="question-mark">?</span>
-    </div>
-    <canvas id="cubeCanvas"></canvas>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="script.js"></script>
+    <main>
+        <div class="diverge-container">
+            <span class="header">DIVERGE</span>
+            <div class="container">
+                <div id="infoDisplay" class="info-display"></div>
+                <div class="rectangle rectangle-1"></div>
+                <div class="rectangle rectangle-2"></div>
+                <div class="rectangle rectangle-3"></div>
+                <div class="rectangle rectangle-4"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Helper function to generate random colors
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        
+        // Configuration object for each rectangle
+        const rectangleConfig = [
+            {
+                id: 1,
+                circleColor: getRandomColor(), // Random color for rectangle 1
+                circleRadius: 0.4, // Relative to the smallest dimension of canvas (0-1)
+                name: 'IVY',
+                description: '?',
+                preview: 'Q1 2026',
+                release: '?',
+                baseWidth: 25, // Base width percentage (these will be adjusted to sum to 100%)
+                baseHeight: 25, // Base height percentage
+                maxHeight: 35  // Maximum height percentage on full magnification
+            },
+            {
+                id: 2,
+                circleColor: getRandomColor(), // Random color for rectangle 2
+                circleRadius: 0.3,
+                name: '?',
+                description: '?',
+                preview: '?',
+                release: '?',
+                baseWidth: 25,
+                baseHeight: 25,
+                maxHeight: 35
+            },
+            {
+                id: 3,
+                circleColor: getRandomColor(), // Random color for rectangle 3
+                circleRadius: 0.35,
+                name: '?',
+                description: '?',
+                preview: '?',
+                release: '?',
+                baseWidth: 25,
+                baseHeight: 25,
+                maxHeight: 35
+            },
+            {
+                id: 4,
+                circleColor: getRandomColor(), // Random color for rectangle 4
+                circleRadius: 0.45,
+                name: '?',
+                description: '?',
+                preview: '?',
+                release: '?',
+                baseWidth: 25,
+                baseHeight: 25,
+                maxHeight: 35
+            }
+        ];
+
+        // Get all rectangle elements
+        const rectangles = document.querySelectorAll('.rectangle');
+        const container = document.querySelector('.container');
+        const infoDisplay = document.getElementById('infoDisplay');
+
+        // Calculate the base width percentages to ensure they sum to 100%
+        const totalBaseWidth = rectangleConfig.reduce((sum, config) => sum + config.baseWidth, 0);
+        rectangleConfig.forEach(config => {
+            config.baseWidth = (config.baseWidth / totalBaseWidth) * 100;
+        });
+
+        // Magnification settings
+        const magnificationSettings = {
+            maxDistance: 200, // Maximum distance in pixels to apply magnification
+            magnificationFactor: 1.2, // Maximum magnification factor
+            widthInfluence: 0 // How much the width changes (0-1)
+        };
+
+        // Apply initial sizes to rectangles
+        function applyInitialSizes() {
+            rectangles.forEach((rectangle, index) => {
+                const config = rectangleConfig[index];
+                rectangle.style.width = `${config.baseWidth}%`;
+                rectangle.style.height = `${config.baseHeight}%`;
+            });
+        }
+
+        // Handle mouse movement and apply magnification
+        function handleMouseMove(event) {
+            // Get container bounds
+            const containerRect = container.getBoundingClientRect();
+            
+            // Get relative mouse position within the container
+            const mouseX = event.clientX - containerRect.left;
+            // mouseY is no longer needed since we're only using X coordinate
+            
+            // Calculate magnification for each rectangle
+            let totalWidth = 0;
+            const widthFactors = [];
+            
+            rectangles.forEach((rectangle, index) => {
+                const rectRect = rectangle.getBoundingClientRect();
+                
+                // Calculate the center of the rectangle (X only)
+                const rectCenterX = rectRect.left + rectRect.width / 2 - containerRect.left;
+                // We don't need rectCenterY anymore
+                
+                // Calculate distance from mouse to rectangle center (X axis only)
+                const distance = Math.abs(mouseX - rectCenterX);
+                
+                // Normalize distance (0 to 1, where 0 is closest and 1 is farthest)
+                const normalizedDistance = Math.min(distance / magnificationSettings.maxDistance, 1);
+                
+                // Calculate magnification using cosine function for smoothness
+                // cos(π * x) goes from 1 at x=0 to -1 at x=1
+                // (1 + cos(π * x)) / 2 transforms this to range from 1 at x=0 to 0 at x=1
+                const magnification = (1 + Math.cos(Math.PI * normalizedDistance)) / 2;
+                
+                // Calculate height based on magnification
+                const config = rectangleConfig[index];
+                const heightRange = config.maxHeight - config.baseHeight;
+                const newHeight = config.baseHeight + heightRange * magnification;
+                
+                // Store width factor for later width calculation
+                const widthFactor = 1 + (magnificationSettings.magnificationFactor - 1) * 
+                                    magnification * magnificationSettings.widthInfluence;
+                widthFactors[index] = widthFactor * config.baseWidth;
+                totalWidth += widthFactors[index];
+                
+                // Apply height immediately
+                rectangle.style.height = `${newHeight}%`;
+            });
+            
+            // Apply width with normalization to ensure sum is 100%
+            rectangles.forEach((rectangle, index) => {
+                const normalizedWidth = (widthFactors[index] / totalWidth) * 100;
+                rectangle.style.width = `${normalizedWidth}%`;
+            });
+        }
+
+        // Add canvas to each rectangle and initialize
+        rectangles.forEach((rectangle, index) => {
+            // Create canvas element
+            const canvas = document.createElement('canvas');
+            rectangle.appendChild(canvas);
+
+            // Set rectangle data-id attribute for identification
+            rectangle.setAttribute('data-id', rectangleConfig[index].id);
+
+            // Draw circle in canvas
+            const ctx = canvas.getContext('2d');
+            
+            // Function to properly set canvas dimensions and draw
+            function setupCanvas() {
+                const config = rectangleConfig[index];
+                
+                // Get the current rectangle dimensions
+                const rectBounds = rectangle.getBoundingClientRect();
+                
+                // Determine the size to maintain aspect ratio (use 90% of the smallest dimension)
+                const sizeToFit = Math.min(rectBounds.width, rectBounds.height) * 0.9;
+                
+                // Update canvas size (both dimensions and resolution)
+                canvas.width = sizeToFit;
+                canvas.height = sizeToFit;
+                canvas.style.width = `${sizeToFit}px`;
+                canvas.style.height = `${sizeToFit}px`;
+                
+                // Draw the circle
+                const radius = sizeToFit * config.circleRadius;
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+                ctx.fillStyle = config.circleColor;
+                ctx.fill();
+            }
+
+            // Initial setup
+            setupCanvas();
+            
+            // Setup canvas observer to detect size changes on the rectangle
+            const resizeObserver = new ResizeObserver(() => {
+                // Rectangle size has changed, update canvas
+                setupCanvas();
+            });
+            
+            // Observe the rectangle for size changes
+            resizeObserver.observe(rectangle);
+            
+            // Also handle window resize
+            window.addEventListener('resize', setupCanvas);
+
+            // Add hover event for info display
+            rectangle.addEventListener('mouseenter', () => {
+                const config = rectangleConfig[index];
+                
+                // Format the display content according to the template
+                const displayContent = `<b>NAME:</b> ${config.name}
+<b>DESCRIPTION:</b> ${config.description}
+<b>PREVIEW:</b> ${config.preview}
+<b>RELEASE:</b> ${config.release}`;
+                
+                // Set content and display
+                infoDisplay.innerHTML = displayContent;
+                infoDisplay.style.display = 'block';
+            });
+
+            rectangle.addEventListener('mouseleave', () => {
+                infoDisplay.style.display = 'none';
+            });
+        });
+        
+        // Initialize with base sizes
+        applyInitialSizes();
+        
+        // Add mouse move event listener to container
+        container.addEventListener('mousemove', handleMouseMove);
+        
+        // Add mouse leave event listener to reset to base sizes
+        container.addEventListener('mouseleave', () => {
+            applyInitialSizes();
+        });
+    </script>
 </body>
+
 </html>
