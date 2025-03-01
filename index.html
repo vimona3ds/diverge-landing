@@ -7,6 +7,7 @@
     <title>DIVERGE</title>
     <link rel="preload" href="assets/crosshair.svg" as="image" type="image/svg+xml">
     <link rel="preload" href="assets/square.svg" as="image" type="image/svg+xml">
+    <link rel="preload" href="assets/crosshair-inverted.svg" as="image" type="image/svg+xml">
     <style>
         @font-face {
             font-family: 'ProggyClean';
@@ -33,7 +34,7 @@
             overflow: hidden;
             font-size: 24px;
             box-sizing: border-box;
-            cursor: url('assets/crosshair.svg') 12 12, crosshair !important;
+            cursor: url('assets/crosshair.svg') 16 16, crosshair !important;
             
             /* Disable font smoothing */
             /* -webkit-font-smoothing: none;
@@ -52,16 +53,16 @@
 
         /* Ensure cursor stays consistent for all elements and states */
         *:hover, *:active, *:focus {
-            cursor: url('assets/crosshair.svg') 12 12, crosshair !important;
+            cursor: url('assets/crosshair.svg') 16 16, crosshair !important;
         }
 
         a, button, input, select, textarea, [role="button"] {
-            cursor: url('assets/crosshair.svg') 12 12, crosshair !important;
+            cursor: url('assets/crosshair.svg') 16 16, crosshair !important;
         }
 
         /* Special cursor for rectangle hover */
         .rectangle:hover {
-            cursor: url('assets/square.svg') 2 2, crosshair !important;
+            cursor: url('assets/square.svg') 8 8, crosshair !important;
         }
 
         canvas, img, svg {
@@ -98,10 +99,15 @@
             border: var(--border-width) solid var(--primary-color);
         }
 
-        .figure-name {
-            font-family: 'OldStandardTT', serif;
-            font-style: italic;
-            margin: 4%;
+        .figure-info {
+            background-color: var(--primary-color);
+            color: var(--background-color);
+            border-left: var(--border-width) solid var(--background-color);
+            border-bottom: var(--border-width) solid var(--background-color);
+            padding: var(--padding);
+            position: absolute;
+            top: var(--border-width);
+            right: var(--border-width);
         }
 
         /* Styling for rectangle canvases */
@@ -132,9 +138,11 @@
         }
 
         .header {
-            padding: 4px;
+            padding: var(--padding);
             flex: 0 0 auto;
             z-index: 10;
+            background-color: var(--primary-color);
+            color: var(--background-color);
         }
 
         .header::after {
@@ -168,15 +176,26 @@
             height: 100%;
             z-index: 15;
             pointer-events: none; /* Allow clicks to pass through */
+            display: none !important; /* Always keep hidden */
         }
 
         /* Line within the SVG */
         .cursor-connector-line {
             stroke: var(--primary-color);
             stroke-width: var(--border-width);
-            stroke-dasharray: 3,2; /* Creates a dashed line */
-            stroke-linecap: square;
+            stroke-dasharray: 2,10; /* Very dotted line with large gaps */
+            stroke-linecap: round; /* Makes the dots rounder */
             shape-rendering: crispEdges; /* Ensure crisp lines to match the pixel art aesthetic */
+        }
+
+        /* Animation classes for the connector line */
+        .cursor-connector-line.variant-1 {
+            stroke-dasharray: 2,10; /* First variant - dots with large gaps */
+        }
+
+        .cursor-connector-line.variant-2 {
+            stroke-dasharray: 2,10; /* Second variant - offset from first variant */
+            stroke-dashoffset: 6; /* Offset to create animation effect */
         }
 
         /* Info display for rectangle information */
@@ -202,11 +221,27 @@
             /* Remove fixed width and height */
         }
 
+        /* Styling for active rectangle */
+        .rectangle.active {
+            background-color: var(--primary-color);
+        }
+
         .crosshair-icon {
             position: absolute;
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             z-index: 5;
+        }
+
+        /* Centered inverted crosshair for active rectangle */
+        .inverted-crosshair-icon {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            z-index: 6;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
         @keyframes blink {
@@ -226,13 +261,15 @@
             <span class="header">DIVERGE</span>
             <div class="container">
                 <div id="infoDisplay" class="info-display"></div>
-                <svg class="cursor-line-overlay" style="display: none;">
+                <svg class="cursor-line-overlay" style="display: none;" viewBox="0 0 50 50" preserveAspectRatio="none">
                     <line class="cursor-connector-line" x1="0" y1="0" x2="0" y2="0" />
                 </svg>
                 <div class="figure-display">
                     <div class="figure">
                     </div>
-                    <span class="figure-name">Fig. 1</span>
+                    <div class="figure-info">
+                        <span>ID 01; SD 022625;</span>
+                    </div>
                 </div>
                 <div class="rectangle"></div>
                 <div class="rectangle"></div>
@@ -306,6 +343,43 @@
         // Variables to track current hovered rectangle
         let currentRectangle = null;
         let isRectangleHovered = false;
+        let lineAnimationInterval = null;
+
+        // Function to update SVG viewBox to half the container size
+        function updateSvgViewBox() {
+            const containerRect = container.getBoundingClientRect();
+            const halfWidth = Math.round(containerRect.width / 2);
+            const halfHeight = Math.round(containerRect.height / 2);
+            cursorLineOverlay.setAttribute('viewBox', `0 0 ${halfWidth} ${halfHeight}`);
+        }
+
+        // Function to animate the cursor connector line
+        function startLineAnimation() {
+            if (lineAnimationInterval) return; // Don't start if already running
+            
+            // Add initial class
+            cursorConnectorLine.classList.add('variant-1');
+            
+            // Toggle between classes every 0.5 seconds
+            lineAnimationInterval = setInterval(() => {
+                if (cursorConnectorLine.classList.contains('variant-1')) {
+                    cursorConnectorLine.classList.remove('variant-1');
+                    cursorConnectorLine.classList.add('variant-2');
+                } else {
+                    cursorConnectorLine.classList.remove('variant-2');
+                    cursorConnectorLine.classList.add('variant-1');
+                }
+            }, 500); // Toggle every 0.5 seconds
+        }
+
+        // Function to stop line animation
+        function stopLineAnimation() {
+            if (lineAnimationInterval) {
+                clearInterval(lineAnimationInterval);
+                lineAnimationInterval = null;
+                cursorConnectorLine.classList.remove('variant-1', 'variant-2');
+            }
+        }
 
         // Calculate the base width percentages to ensure they sum to 100%
         const totalBaseWidth = rectangleConfig.reduce((sum, config) => sum + config.baseWidth, 0);
@@ -325,10 +399,42 @@
         // Track the active rectangle index
         let activeRectangleIndex = 0;
 
+        // Function to add inverted crosshair to active rectangle
+        function addInvertedCrosshair(rectangle) {
+            // First remove any existing inverted crosshair
+            const existingCrosshair = rectangle.querySelector('.inverted-crosshair-icon');
+            if (existingCrosshair) {
+                rectangle.removeChild(existingCrosshair);
+            }
+            
+            // Create and add the inverted crosshair
+            const invertedCrosshair = document.createElement('img');
+            invertedCrosshair.src = 'assets/crosshair-inverted.svg';
+            invertedCrosshair.className = 'inverted-crosshair-icon';
+            rectangle.appendChild(invertedCrosshair);
+        }
+
         // Function to set active rectangle
         function setActiveRectangle(index) {
             // Update activeRectangleIndex
             activeRectangleIndex = index;
+            
+            // Remove active class from all rectangles
+            rectangles.forEach(rect => {
+                rect.classList.remove('active');
+                
+                // Remove any inverted crosshair icons
+                const invertedCrosshair = rect.querySelector('.inverted-crosshair-icon');
+                if (invertedCrosshair) {
+                    rect.removeChild(invertedCrosshair);
+                }
+            });
+            
+            // Add active class to the selected rectangle
+            rectangles[index].classList.add('active');
+            
+            // Add the inverted crosshair to the active rectangle
+            addInvertedCrosshair(rectangles[index]);
             
             // Update rectangle heights
             rectangles.forEach((rect, idx) => {
@@ -392,11 +498,17 @@
             const rectCenterX = (rectBounds.left + rectBounds.right) / 2 - containerRect.left;
             const rectCenterY = (rectBounds.top + rectBounds.bottom) / 2 - containerRect.top;
             
+            // Convert to half-resolution coordinate system for the SVG viewBox
+            const halfCursorX = cursorX / 2;
+            const halfCursorY = cursorY / 2;
+            const halfRectCenterX = rectCenterX / 2;
+            const halfRectCenterY = rectCenterY / 2;
+            
             // Update line coordinates
-            cursorConnectorLine.setAttribute('x1', cursorX);
-            cursorConnectorLine.setAttribute('y1', cursorY);
-            cursorConnectorLine.setAttribute('x2', rectCenterX);
-            cursorConnectorLine.setAttribute('y2', rectCenterY);
+            cursorConnectorLine.setAttribute('x1', halfCursorX);
+            cursorConnectorLine.setAttribute('y1', halfCursorY);
+            cursorConnectorLine.setAttribute('x2', halfRectCenterX);
+            cursorConnectorLine.setAttribute('y2', halfRectCenterY);
         }
 
         // Handle mouse movement and apply magnification
@@ -416,6 +528,9 @@
 
             // Add hover event for info display (only for non-active rectangles)
             rectangle.addEventListener('mouseenter', () => {
+                // Don't add regular crosshair if this is the active rectangle
+                if (index === activeRectangleIndex) return;
+                
                 // Add crosshair SVG to the rectangle
                 const crosshairIcon = document.createElement('img');
                 crosshairIcon.src = 'assets/crosshair.svg';
@@ -425,10 +540,18 @@
                 // Set up the cursor line
                 isRectangleHovered = true;
                 currentRectangle = rectangle;
-                cursorLineOverlay.style.display = 'block';
+                // Line below commented out to hide the dotted line
+                // cursorLineOverlay.style.display = 'block';
+                
+                // Start the line animation
+                // Line below commented out since we're not showing the dotted line
+                // startLineAnimation();
             });
 
             rectangle.addEventListener('mouseleave', () => {
+                // Don't remove crosshair if this is the active rectangle
+                if (index === activeRectangleIndex) return;
+                
                 // Remove the crosshair SVG from the rectangle
                 const crosshairIcon = rectangle.querySelector('.crosshair-icon');
                 if (crosshairIcon) {
@@ -438,13 +561,24 @@
                 // Hide the cursor line
                 isRectangleHovered = false;
                 currentRectangle = null;
-                cursorLineOverlay.style.display = 'none';
+                // Line below commented out to hide the dotted line
+                // cursorLineOverlay.style.display = 'none';
+                
+                // Stop the line animation
+                // Line below commented out since we're not showing the dotted line
+                // stopLineAnimation();
             });
         });
         
         // Initialize with base sizes and set the first rectangle as active
         applyInitialSizes();
         setActiveRectangle(0);
+        
+        // Initialize the SVG viewBox
+        updateSvgViewBox();
+        
+        // Add resize event listener to update the viewBox when window resizes
+        window.addEventListener('resize', updateSvgViewBox);
         
         // Add mouse move event listener to container
         container.addEventListener('mousemove', function(event) {
@@ -459,7 +593,8 @@
             // Also make sure to hide the cursor line if mouse leaves container
             isRectangleHovered = false;
             currentRectangle = null;
-            cursorLineOverlay.style.display = 'none';
+            // Line below commented out to hide the dotted line
+            // cursorLineOverlay.style.display = 'none';
         });
     </script>
 

@@ -1,4 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 4 4">
-  <!-- Simple 4x4 solid square -->
-  <rect width="4" height="4" fill="#333"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Smaller crosshair design with crisp edges -->
+  <style>
+    .crosshair {
+      stroke: #333;
+      stroke-width: 2;
+      shape-rendering: crispEdges;
+    }
+  </style>
+  
+  <!-- Transparent background -->
+  <rect width="16" height="16" fill="transparent"/>
+  
+  <!-- Vertical line -->
+  <line x1="8" y1="0" x2="8" y2="16" class="crosshair"/>
+  
+  <!-- Horizontal line -->
+  <line x1="0" y1="8" x2="16" y2="8" class="crosshair"/>
 </svg> 

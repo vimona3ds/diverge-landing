@@ -37,7 +37,7 @@ function setupScene(canvasElement) {
             ),
             angle: angle,
             velocity: new THREE.Vector2(baseSpeed * Math.cos(angle), baseSpeed * Math.sin(angle)),
-            radius: Math.random() * 0.25 + 0.05 // Random radius between 0.05 and 0.3
+            radius: Math.random() * 0.4 + 0.05 // Random radius between 0.05 and 0.3
         });
     }
 
@@ -49,7 +49,7 @@ function setupScene(canvasElement) {
     `;
 
     const fragmentShader = `
-        #define COLOR_DEPTH 2.
+        #define COLOR_DEPTH 1.
         #define BALLS ${balls.length}
         #define THRESHOLD ${balls.length - 7}.
 
