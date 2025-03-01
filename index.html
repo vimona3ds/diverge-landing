@@ -5,16 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DIVERGE</title>
-    <link rel="preload" href="assets/cursor.svg" as="image" type="image/svg+xml">
+    <link rel="preload" href="assets/crosshair.svg" as="image" type="image/svg+xml">
+    <link rel="preload" href="assets/square.svg" as="image" type="image/svg+xml">
     <style>
         @font-face {
             font-family: 'ProggyClean';
             src: url('assets/ProggyClean.ttf') format('truetype');
         }
 
+        @font-face {
+            font-family: 'OldStandardTT';
+            src: url('assets/OldStandardTT-Italic.ttf') format('truetype');
+            font-style: italic;
+        }
+
         :root {
             --primary-color: #333;
             --background-color: #f4ecd8;
+            --padding: 8px;
+            --border-width: 2px;
         }
 
         * {
@@ -24,7 +33,7 @@
             overflow: hidden;
             font-size: 24px;
             box-sizing: border-box;
-            cursor: url('assets/cursor.svg') 12 12, crosshair !important;
+            cursor: url('assets/crosshair.svg') 12 12, crosshair !important;
             
             /* Disable font smoothing */
             /* -webkit-font-smoothing: none;
@@ -43,18 +52,19 @@
 
         /* Ensure cursor stays consistent for all elements and states */
         *:hover, *:active, *:focus {
-            cursor: url('assets/cursor.svg') 12 12, crosshair !important;
+            cursor: url('assets/crosshair.svg') 12 12, crosshair !important;
         }
 
         a, button, input, select, textarea, [role="button"] {
-            cursor: url('assets/cursor.svg') 12 12, crosshair !important;
+            cursor: url('assets/crosshair.svg') 12 12, crosshair !important;
         }
 
-        main, .container, .rectangle, canvas {
-            /* cursor property is already set globally */
+        /* Special cursor for rectangle hover */
+        .rectangle:hover {
+            cursor: url('assets/square.svg') 2 2, crosshair !important;
         }
 
-        img {
+        canvas, img, svg {
             image-rendering: optimizeSpeed;
             /* STOP SMOOTHING, GIVE ME SPEED  */
             image-rendering: -moz-crisp-edges;
@@ -71,15 +81,34 @@
             /* IE8+                           */
         }
 
+        .figure-display {
+            position: absolute;
+            top: var(--padding);
+            right: var(--padding);
+            width: 50%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .figure {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border: var(--border-width) solid var(--primary-color);
+        }
+
+        .figure-name {
+            font-family: 'OldStandardTT', serif;
+            font-style: italic;
+            margin: 4%;
+        }
+
         /* Styling for rectangle canvases */
         canvas {
             display: block;
-            image-rendering: pixelated;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            /* Size will be set in JavaScript */
+            width: 100%;
+            height: 100%;
         }
 
         main {
@@ -121,21 +150,41 @@
         .container {
             width: 100%;
             height: 100%;
-            border: 2px solid var(--primary-color);
-            padding: 2px;
+            border: var(--border-width) solid var(--primary-color);
+            padding: var(--padding);
             display: flex;
             flex-direction: row;
-            gap: 2px;
+            gap: var(--padding);
             align-items: flex-end;
             position: relative;
+        }
+
+        /* SVG overlay for cursor connection line */
+        .cursor-line-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 15;
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+
+        /* Line within the SVG */
+        .cursor-connector-line {
+            stroke: var(--primary-color);
+            stroke-width: var(--border-width);
+            stroke-dasharray: 3,2; /* Creates a dashed line */
+            stroke-linecap: square;
+            shape-rendering: crispEdges; /* Ensure crisp lines to match the pixel art aesthetic */
         }
 
         /* Info display for rectangle information */
         .info-display {
             position: absolute;
-            top: 2px;
-            left: 2px;
-            padding: 4px;
+            top: var(--padding);
+            left: var(--padding);
+            padding: var(--padding);
             z-index: 20;
             display: none;
             line-height: 1.2;
@@ -143,7 +192,7 @@
         }
 
         .rectangle {
-            border: 2px solid var(--primary-color);
+            border: var(--border-width) solid var(--primary-color);
             transition: all 0.1s cubic-bezier(0,1,1,1);
             position: relative;
             display: flex;
@@ -151,6 +200,13 @@
             align-items: center;
             /* Height and width will be set by JavaScript */
             /* Remove fixed width and height */
+        }
+
+        .crosshair-icon {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            z-index: 5;
         }
 
         @keyframes blink {
@@ -170,15 +226,24 @@
             <span class="header">DIVERGE</span>
             <div class="container">
                 <div id="infoDisplay" class="info-display"></div>
-                <div class="rectangle rectangle-1"></div>
-                <div class="rectangle rectangle-2"></div>
-                <div class="rectangle rectangle-3"></div>
-                <div class="rectangle rectangle-4"></div>
+                <svg class="cursor-line-overlay" style="display: none;">
+                    <line class="cursor-connector-line" x1="0" y1="0" x2="0" y2="0" />
+                </svg>
+                <div class="figure-display">
+                    <div class="figure">
+                    </div>
+                    <span class="figure-name">Fig. 1</span>
+                </div>
+                <div class="rectangle"></div>
+                <div class="rectangle"></div>
+                <div class="rectangle"></div>
+                <div class="rectangle"></div>
             </div>
         </div>
     </main>
 
     <script>
+
         // Helper function to generate random colors
         function getRandomColor() {
             const letters = '0123456789ABCDEF';
@@ -188,56 +253,46 @@
             }
             return color;
         }
+
+        const BASE_HEIGHT = 25;
         
         // Configuration object for each rectangle
         const rectangleConfig = [
             {
                 id: 1,
-                circleColor: getRandomColor(), // Random color for rectangle 1
-                circleRadius: 0.4, // Relative to the smallest dimension of canvas (0-1)
                 name: 'IVY',
+                canvas: 'canvas-1',
                 description: '?',
                 preview: 'Q1 2026',
                 release: '?',
-                baseWidth: 25, // Base width percentage (these will be adjusted to sum to 100%)
-                baseHeight: 25, // Base height percentage
-                maxHeight: 35  // Maximum height percentage on full magnification
+                baseWidth: 10, // Base width percentage (these will be adjusted to sum to 100%)
             },
             {
                 id: 2,
-                circleColor: getRandomColor(), // Random color for rectangle 2
-                circleRadius: 0.3,
                 name: '?',
+                canvas: 'canvas-2',
                 description: '?',
                 preview: '?',
                 release: '?',
-                baseWidth: 25,
-                baseHeight: 25,
-                maxHeight: 35
+                baseWidth: 20,
             },
             {
                 id: 3,
-                circleColor: getRandomColor(), // Random color for rectangle 3
-                circleRadius: 0.35,
                 name: '?',
+                canvas: 'canvas-3',
                 description: '?',
                 preview: '?',
                 release: '?',
-                baseWidth: 25,
-                baseHeight: 25,
-                maxHeight: 35
+                baseWidth: 30,
             },
             {
                 id: 4,
-                circleColor: getRandomColor(), // Random color for rectangle 4
-                circleRadius: 0.45,
                 name: '?',
+                canvas: 'canvas-4',
                 description: '?',
                 preview: '?',
                 release: '?',
-                baseWidth: 25,
-                baseHeight: 25,
-                maxHeight: 35
+                baseWidth: 40,
             }
         ];
 
@@ -245,6 +300,12 @@
         const rectangles = document.querySelectorAll('.rectangle');
         const container = document.querySelector('.container');
         const infoDisplay = document.getElementById('infoDisplay');
+        const cursorLineOverlay = document.querySelector('.cursor-line-overlay');
+        const cursorConnectorLine = document.querySelector('.cursor-connector-line');
+        
+        // Variables to track current hovered rectangle
+        let currentRectangle = null;
+        let isRectangleHovered = false;
 
         // Calculate the base width percentages to ensure they sum to 100%
         const totalBaseWidth = rectangleConfig.reduce((sum, config) => sum + config.baseWidth, 0);
@@ -259,152 +320,150 @@
             widthInfluence: 0 // How much the width changes (0-1)
         };
 
+        // Figure element where canvas will be added
+        const figureElement = document.querySelector('.figure');
+        // Track the active rectangle index
+        let activeRectangleIndex = 0;
+
+        // Function to set active rectangle
+        function setActiveRectangle(index) {
+            // Update activeRectangleIndex
+            activeRectangleIndex = index;
+            
+            // Update rectangle heights
+            rectangles.forEach((rect, idx) => {
+                rect.style.height = idx === activeRectangleIndex ? '35%' : `${BASE_HEIGHT}%`;
+            });
+            
+            // Get config for active rectangle
+            const config = rectangleConfig[index];
+            
+            // Update info display
+            const displayContent = `<b>NAME:</b> ${config.name}
+<b>DESCRIPTION:</b> ${config.description}
+<b>PREVIEW:</b> ${config.preview}
+<b>RELEASE:</b> ${config.release}`;
+            
+            // Set content and make visible
+            infoDisplay.innerHTML = displayContent;
+            infoDisplay.style.display = 'block';
+            
+            // Clear figure element
+            figureElement.innerHTML = '';
+            
+            // Create canvas for the active rectangle
+            const canvas = document.createElement('canvas');
+            canvas.className = config.canvas;
+            figureElement.appendChild(canvas);
+            
+            // Dispatch a custom event to notify that a new canvas was created
+            const event = new CustomEvent('canvasCreated', { 
+                detail: {
+                    canvasClass: config.canvas
+                }
+            });
+            document.dispatchEvent(event);
+        }
+
         // Apply initial sizes to rectangles
         function applyInitialSizes() {
             rectangles.forEach((rectangle, index) => {
                 const config = rectangleConfig[index];
                 rectangle.style.width = `${config.baseWidth}%`;
-                rectangle.style.height = `${config.baseHeight}%`;
+                rectangle.style.height = index === activeRectangleIndex ? '35%' : `${BASE_HEIGHT}%`;
             });
+        }
+
+        // Handle mouse movement for the connector line
+        function updateCursorLine(event) {
+            if (!isRectangleHovered || !currentRectangle) return;
+            
+            // Get container bounds for relative positioning
+            const containerRect = container.getBoundingClientRect();
+            
+            // Calculate cursor position relative to container
+            const cursorX = event.clientX - containerRect.left;
+            const cursorY = event.clientY - containerRect.top;
+            
+            // Get rectangle bounds
+            const rectBounds = currentRectangle.getBoundingClientRect();
+            
+            // Calculate rectangle center relative to container
+            const rectCenterX = (rectBounds.left + rectBounds.right) / 2 - containerRect.left;
+            const rectCenterY = (rectBounds.top + rectBounds.bottom) / 2 - containerRect.top;
+            
+            // Update line coordinates
+            cursorConnectorLine.setAttribute('x1', cursorX);
+            cursorConnectorLine.setAttribute('y1', cursorY);
+            cursorConnectorLine.setAttribute('x2', rectCenterX);
+            cursorConnectorLine.setAttribute('y2', rectCenterY);
         }
 
         // Handle mouse movement and apply magnification
         function handleMouseMove(event) {
-            // Get container bounds
-            const containerRect = container.getBoundingClientRect();
-            
-            // Get relative mouse position within the container
-            const mouseX = event.clientX - containerRect.left;
-            // mouseY is no longer needed since we're only using X coordinate
-            
-            // Calculate magnification for each rectangle
-            let totalWidth = 0;
-            const widthFactors = [];
-            
-            rectangles.forEach((rectangle, index) => {
-                const rectRect = rectangle.getBoundingClientRect();
-                
-                // Calculate the center of the rectangle (X only)
-                const rectCenterX = rectRect.left + rectRect.width / 2 - containerRect.left;
-                // We don't need rectCenterY anymore
-                
-                // Calculate distance from mouse to rectangle center (X axis only)
-                const distance = Math.abs(mouseX - rectCenterX);
-                
-                // Normalize distance (0 to 1, where 0 is closest and 1 is farthest)
-                const normalizedDistance = Math.min(distance / magnificationSettings.maxDistance, 1);
-                
-                // Calculate magnification using cosine function for smoothness
-                // cos(π * x) goes from 1 at x=0 to -1 at x=1
-                // (1 + cos(π * x)) / 2 transforms this to range from 1 at x=0 to 0 at x=1
-                const magnification = (1 + Math.cos(Math.PI * normalizedDistance)) / 2;
-                
-                // Calculate height based on magnification
-                const config = rectangleConfig[index];
-                const heightRange = config.maxHeight - config.baseHeight;
-                const newHeight = config.baseHeight + heightRange * magnification;
-                
-                // Store width factor for later width calculation
-                const widthFactor = 1 + (magnificationSettings.magnificationFactor - 1) * 
-                                    magnification * magnificationSettings.widthInfluence;
-                widthFactors[index] = widthFactor * config.baseWidth;
-                totalWidth += widthFactors[index];
-                
-                // Apply height immediately
-                rectangle.style.height = `${newHeight}%`;
-            });
-            
-            // Apply width with normalization to ensure sum is 100%
-            rectangles.forEach((rectangle, index) => {
-                const normalizedWidth = (widthFactors[index] / totalWidth) * 100;
-                rectangle.style.width = `${normalizedWidth}%`;
-            });
+            // Original empty function remains for compatibility
         }
 
-        // Add canvas to each rectangle and initialize
+        // Initialize rectangles
         rectangles.forEach((rectangle, index) => {
-            // Create canvas element
-            const canvas = document.createElement('canvas');
-            rectangle.appendChild(canvas);
-
             // Set rectangle data-id attribute for identification
             rectangle.setAttribute('data-id', rectangleConfig[index].id);
 
-            // Draw circle in canvas
-            const ctx = canvas.getContext('2d');
-            
-            // Function to properly set canvas dimensions and draw
-            function setupCanvas() {
-                const config = rectangleConfig[index];
-                
-                // Get the current rectangle dimensions
-                const rectBounds = rectangle.getBoundingClientRect();
-                
-                // Determine the size to maintain aspect ratio (use 90% of the smallest dimension)
-                const sizeToFit = Math.min(rectBounds.width, rectBounds.height) * 0.9;
-                
-                // Update canvas size (both dimensions and resolution)
-                canvas.width = sizeToFit;
-                canvas.height = sizeToFit;
-                canvas.style.width = `${sizeToFit}px`;
-                canvas.style.height = `${sizeToFit}px`;
-                
-                // Draw the circle
-                const radius = sizeToFit * config.circleRadius;
-                
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.beginPath();
-                ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
-                ctx.fillStyle = config.circleColor;
-                ctx.fill();
-            }
-
-            // Initial setup
-            setupCanvas();
-            
-            // Setup canvas observer to detect size changes on the rectangle
-            const resizeObserver = new ResizeObserver(() => {
-                // Rectangle size has changed, update canvas
-                setupCanvas();
+            // Add click event to set as active rectangle
+            rectangle.addEventListener('click', () => {
+                setActiveRectangle(index);
             });
-            
-            // Observe the rectangle for size changes
-            resizeObserver.observe(rectangle);
-            
-            // Also handle window resize
-            window.addEventListener('resize', setupCanvas);
 
-            // Add hover event for info display
+            // Add hover event for info display (only for non-active rectangles)
             rectangle.addEventListener('mouseenter', () => {
-                const config = rectangleConfig[index];
+                // Add crosshair SVG to the rectangle
+                const crosshairIcon = document.createElement('img');
+                crosshairIcon.src = 'assets/crosshair.svg';
+                crosshairIcon.className = 'crosshair-icon';
+                rectangle.appendChild(crosshairIcon);
                 
-                // Format the display content according to the template
-                const displayContent = `<b>NAME:</b> ${config.name}
-<b>DESCRIPTION:</b> ${config.description}
-<b>PREVIEW:</b> ${config.preview}
-<b>RELEASE:</b> ${config.release}`;
-                
-                // Set content and display
-                infoDisplay.innerHTML = displayContent;
-                infoDisplay.style.display = 'block';
+                // Set up the cursor line
+                isRectangleHovered = true;
+                currentRectangle = rectangle;
+                cursorLineOverlay.style.display = 'block';
             });
 
             rectangle.addEventListener('mouseleave', () => {
-                infoDisplay.style.display = 'none';
+                // Remove the crosshair SVG from the rectangle
+                const crosshairIcon = rectangle.querySelector('.crosshair-icon');
+                if (crosshairIcon) {
+                    rectangle.removeChild(crosshairIcon);
+                }
+                
+                // Hide the cursor line
+                isRectangleHovered = false;
+                currentRectangle = null;
+                cursorLineOverlay.style.display = 'none';
             });
         });
         
-        // Initialize with base sizes
+        // Initialize with base sizes and set the first rectangle as active
         applyInitialSizes();
+        setActiveRectangle(0);
         
         // Add mouse move event listener to container
-        container.addEventListener('mousemove', handleMouseMove);
+        container.addEventListener('mousemove', function(event) {
+            // Call both mouse handling functions
+            handleMouseMove(event);
+            updateCursorLine(event);
+        });
         
-        // Add mouse leave event listener to reset to base sizes
+        // Add mouse leave event listener to reset to base sizes (but keep active rectangle height)
         container.addEventListener('mouseleave', () => {
             applyInitialSizes();
+            // Also make sure to hide the cursor line if mouse leaves container
+            isRectangleHovered = false;
+            currentRectangle = null;
+            cursorLineOverlay.style.display = 'none';
         });
     </script>
+
+    <script type="module" src="systems/1.js"></script>
 </body>
 
 </html>
