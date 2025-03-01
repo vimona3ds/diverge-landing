@@ -7,7 +7,9 @@
     <title>DIVERGE</title>
     <link rel="preload" href="assets/crosshair.svg" as="image" type="image/svg+xml">
     <link rel="preload" href="assets/square.svg" as="image" type="image/svg+xml">
+    <link rel="preload" href="assets/square-inverted.svg" as="image" type="image/svg+xml">
     <link rel="preload" href="assets/crosshair-inverted.svg" as="image" type="image/svg+xml">
+    <link rel="preload" href="assets/checkerboard1.svg" as="image" type="image/svg+xml">
     <style>
         @font-face {
             font-family: 'ProggyClean';
@@ -61,9 +63,29 @@
         }
 
         /* Special cursor for rectangle hover */
-        .rectangle:hover {
+        .rectangle:not(.active):hover {
             cursor: url('assets/square.svg') 8 8, crosshair !important;
+            background-image: url('assets/checkerboard1.svg');
+            background-repeat: repeat !important;
+            background-size: 4px 4px !important;
         }
+
+        .rectangle:active {
+            background-image: url('assets/checkerboard1.svg');
+            background-repeat: repeat !important;
+            background-size: 4px 4px !important;
+        }
+
+        /* Special cursor when hovering active rectangle - maintain the regular crosshair but without pattern */
+        .rectangle.active:hover {
+            cursor: url('assets/square-inverted.svg') 8 8, crosshair !important;
+        }
+
+        /* Ensure the inverted crosshair icon inside active rectangle maintains the square-inverted cursor */
+        /* .rectangle.active .inverted-crosshair-icon,
+        .rectangle.active .inverted-crosshair-icon:hover {
+            cursor: url('assets/square-inverted.svg') 8 8, crosshair !important;
+        } */
 
         canvas, img, svg {
             image-rendering: optimizeSpeed;
@@ -87,27 +109,30 @@
             top: var(--padding);
             right: var(--padding);
             width: 50%;
-            height: 100%;
+            height: 50%;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
         .figure {
+            position: relative;
             width: 100%;
+            height: 100%;
             aspect-ratio: 1/1;
             border: var(--border-width) solid var(--primary-color);
         }
 
         .figure-info {
-            background-color: var(--primary-color);
-            color: var(--background-color);
-            border-left: var(--border-width) solid var(--background-color);
-            border-bottom: var(--border-width) solid var(--background-color);
+            display: flex;
+            flex-direction: column;
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            border: var(--border-width) solid var(--primary-color);
             padding: var(--padding);
             position: absolute;
-            top: var(--border-width);
-            right: var(--border-width);
+            right: 0;
+            bottom: 0;
         }
 
         /* Styling for rectangle canvases */
@@ -143,16 +168,6 @@
             z-index: 10;
             background-color: var(--primary-color);
             color: var(--background-color);
-        }
-
-        .header::after {
-            content: '';
-            display: inline-block;
-            width: 0.2ch;
-            height: 1em;
-            background-color: var(--primary-color);
-            animation: blink 0.8s step-end infinite;
-            vertical-align: text-bottom;
         }
 
         .container {
@@ -203,7 +218,6 @@
             position: absolute;
             top: var(--padding);
             left: var(--padding);
-            padding: var(--padding);
             z-index: 20;
             display: none;
             line-height: 1.2;
@@ -212,7 +226,6 @@
 
         .rectangle {
             border: var(--border-width) solid var(--primary-color);
-            transition: all 0.1s cubic-bezier(0,1,1,1);
             position: relative;
             display: flex;
             justify-content: center;
@@ -223,7 +236,8 @@
 
         /* Styling for active rectangle */
         .rectangle.active {
-            background-color: var(--primary-color);
+            background-color: var(--primary-color) !important;
+            border: none;
         }
 
         .crosshair-icon {
@@ -233,24 +247,33 @@
             z-index: 5;
         }
 
-        /* Centered inverted crosshair for active rectangle */
-        .inverted-crosshair-icon {
-            position: absolute;
-            width: 32px;
-            height: 32px;
-            z-index: 6;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .with-corner, .outlined-with-corner{
+            position: relative;
         }
 
-        @keyframes blink {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0;
-            }
+        .with-corner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            background-image: url('assets/corner.svg');
+            background-size: 16px 16px;
+            background-repeat: no-repeat;
+        }
+
+        .outlined-with-corner::after, .rectangle.active::after {
+            content: '';
+            position: absolute;
+            top: -1px;
+            right: -1px;
+            width: 16px;
+            height: 16px;
+            background-image: url('assets/corner.svg');
+            background-size: 16px 16px;
+            background-repeat: no-repeat;
+            z-index: 10;
         }
     </style>
 </head>
@@ -258,7 +281,7 @@
 <body>
     <main>
         <div class="diverge-container">
-            <span class="header">DIVERGE</span>
+            <span class="header with-corner">DIVERGE</span>
             <div class="container">
                 <div id="infoDisplay" class="info-display"></div>
                 <svg class="cursor-line-overlay" style="display: none;" viewBox="0 0 50 50" preserveAspectRatio="none">
@@ -268,7 +291,7 @@
                     <div class="figure">
                     </div>
                     <div class="figure-info">
-                        <span>ID 01; SD 022625;</span>
+                        ...
                     </div>
                 </div>
                 <div class="rectangle"></div>
@@ -300,14 +323,16 @@
                 name: 'IVY',
                 canvas: 'canvas-1',
                 description: '?',
-                preview: 'Q1 2026',
+                preview: 'Q2 2025',
                 release: '?',
+                updateCanvasInfo: () => {
+                    return ["ID 001", "SD 022625"];
+                },
                 baseWidth: 10, // Base width percentage (these will be adjusted to sum to 100%)
             },
             {
                 id: 2,
                 name: '?',
-                canvas: 'canvas-2',
                 description: '?',
                 preview: '?',
                 release: '?',
@@ -316,7 +341,7 @@
             {
                 id: 3,
                 name: '?',
-                canvas: 'canvas-3',
+                canvas: '',
                 description: '?',
                 preview: '?',
                 release: '?',
@@ -325,7 +350,6 @@
             {
                 id: 4,
                 name: '?',
-                canvas: 'canvas-4',
                 description: '?',
                 preview: '?',
                 release: '?',
@@ -396,22 +420,31 @@
 
         // Figure element where canvas will be added
         const figureElement = document.querySelector('.figure');
+        const figureDisplay = document.querySelector('.figure-display');
+        const figureInfo = document.querySelector('.figure-info');
         // Track the active rectangle index
         let activeRectangleIndex = 0;
 
-        // Function to add inverted crosshair to active rectangle
-        function addInvertedCrosshair(rectangle) {
-            // First remove any existing inverted crosshair
-            const existingCrosshair = rectangle.querySelector('.inverted-crosshair-icon');
-            if (existingCrosshair) {
-                rectangle.removeChild(existingCrosshair);
-            }
+        // Function to update figure info based on config's updateCanvasInfo
+        function updateFigureInfo() {
+            // Get the active rectangle config
+            const config = rectangleConfig[activeRectangleIndex];
             
-            // Create and add the inverted crosshair
-            const invertedCrosshair = document.createElement('img');
-            invertedCrosshair.src = 'assets/crosshair-inverted.svg';
-            invertedCrosshair.className = 'inverted-crosshair-icon';
-            rectangle.appendChild(invertedCrosshair);
+            // Check if updateCanvasInfo exists and is a function
+            if (config && config.updateCanvasInfo && typeof config.updateCanvasInfo === 'function') {
+                // Get the info array
+                const infoArray = config.updateCanvasInfo();
+                
+                // Clear current content
+                figureInfo.innerHTML = '';
+                
+                // Add each info item as a span
+                infoArray.forEach(item => {
+                    const span = document.createElement('span');
+                    span.textContent = item;
+                    figureInfo.appendChild(span);
+                });
+            }
         }
 
         // Function to set active rectangle
@@ -433,8 +466,8 @@
             // Add active class to the selected rectangle
             rectangles[index].classList.add('active');
             
-            // Add the inverted crosshair to the active rectangle
-            addInvertedCrosshair(rectangles[index]);
+            // No longer adding the inverted crosshair to the active rectangle
+            // addInvertedCrosshair(rectangles[index]);
             
             // Update rectangle heights
             rectangles.forEach((rect, idx) => {
@@ -454,21 +487,33 @@
             infoDisplay.innerHTML = displayContent;
             infoDisplay.style.display = 'block';
             
-            // Clear figure element
-            figureElement.innerHTML = '';
-            
-            // Create canvas for the active rectangle
-            const canvas = document.createElement('canvas');
-            canvas.className = config.canvas;
-            figureElement.appendChild(canvas);
-            
-            // Dispatch a custom event to notify that a new canvas was created
-            const event = new CustomEvent('canvasCreated', { 
-                detail: {
-                    canvasClass: config.canvas
-                }
-            });
-            document.dispatchEvent(event);
+            // Check if config has a valid canvas property
+            if (!config.canvas) {
+                // Hide figure-display if no valid canvas
+                figureDisplay.style.display = 'none';
+            } else {
+                // Show figure-display
+                figureDisplay.style.display = 'flex';
+                
+                // Clear figure element
+                figureElement.innerHTML = '';
+                
+                // Create canvas for the active rectangle
+                const canvas = document.createElement('canvas');
+                canvas.className = config.canvas;
+                figureElement.appendChild(canvas);
+                
+                // Update the figure info
+                updateFigureInfo();
+                
+                // Dispatch a custom event to notify that a new canvas was created
+                const event = new CustomEvent('canvasCreated', { 
+                    detail: {
+                        canvasClass: config.canvas
+                    }
+                });
+                document.dispatchEvent(event);
+            }
         }
 
         // Apply initial sizes to rectangles
@@ -478,6 +523,17 @@
                 rectangle.style.width = `${config.baseWidth}%`;
                 rectangle.style.height = index === activeRectangleIndex ? '35%' : `${BASE_HEIGHT}%`;
             });
+        }
+
+        // Animation loop
+        function animate() {
+            // Update figure info if there's an active rectangle
+            if (activeRectangleIndex >= 0 && figureDisplay.style.display !== 'none') {
+                updateFigureInfo();
+            }
+            
+            // Continue the animation loop
+            requestAnimationFrame(animate);
         }
 
         // Handle mouse movement for the connector line
@@ -528,48 +584,38 @@
 
             // Add hover event for info display (only for non-active rectangles)
             rectangle.addEventListener('mouseenter', () => {
-                // Don't add regular crosshair if this is the active rectangle
+                // Don't modify if this is the active rectangle
                 if (index === activeRectangleIndex) return;
-                
-                // Add crosshair SVG to the rectangle
-                const crosshairIcon = document.createElement('img');
-                crosshairIcon.src = 'assets/crosshair.svg';
-                crosshairIcon.className = 'crosshair-icon';
-                rectangle.appendChild(crosshairIcon);
                 
                 // Set up the cursor line
                 isRectangleHovered = true;
                 currentRectangle = rectangle;
-                // Line below commented out to hide the dotted line
-                // cursorLineOverlay.style.display = 'block';
-                
-                // Start the line animation
-                // Line below commented out since we're not showing the dotted line
-                // startLineAnimation();
             });
 
             rectangle.addEventListener('mouseleave', () => {
-                // Don't remove crosshair if this is the active rectangle
+                // Don't modify if this is the active rectangle
                 if (index === activeRectangleIndex) return;
-                
-                // Remove the crosshair SVG from the rectangle
-                const crosshairIcon = rectangle.querySelector('.crosshair-icon');
-                if (crosshairIcon) {
-                    rectangle.removeChild(crosshairIcon);
-                }
                 
                 // Hide the cursor line
                 isRectangleHovered = false;
                 currentRectangle = null;
-                // Line below commented out to hide the dotted line
-                // cursorLineOverlay.style.display = 'none';
-                
-                // Stop the line animation
-                // Line below commented out since we're not showing the dotted line
-                // stopLineAnimation();
             });
         });
-        
+
+        function getThreeBallsWithHighestVelocity() {
+            const balls = document.querySelectorAll('.ball');
+            const velocities = Array.from(balls).map(ball => {
+                const rect = ball.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const velocity = Math.sqrt(ball.dataset.vx ** 2 + ball.dataset.vy ** 2);
+                return { ball, velocity, centerX, centerY };
+            });
+
+            velocities.sort((a, b) => b.velocity - a.velocity);
+            return velocities.slice(0, 3);
+        }
+            
         // Initialize with base sizes and set the first rectangle as active
         applyInitialSizes();
         setActiveRectangle(0);
@@ -593,9 +639,10 @@
             // Also make sure to hide the cursor line if mouse leaves container
             isRectangleHovered = false;
             currentRectangle = null;
-            // Line below commented out to hide the dotted line
-            // cursorLineOverlay.style.display = 'none';
         });
+
+        // Start the animation loop
+        animate();
     </script>
 
     <script type="module" src="systems/1.js"></script>
